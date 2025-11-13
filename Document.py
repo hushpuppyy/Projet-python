@@ -59,6 +59,7 @@ class Document:
             date=date,
             url=rec.get("url", ""),
             texte=rec.get("texte", ""),
+            doc_type=rec.get("type", "")
         )
 
 #TD5 
