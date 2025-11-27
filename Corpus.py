@@ -6,6 +6,9 @@ import pandas as pd
 from Document import Document, ArxivDocument, RedditDocument
 from Author import Author
 
+import re
+from collections import Counter
+
 class Corpus:
     _instance = None
 
@@ -23,6 +26,7 @@ class Corpus:
         self.id2doc = {}
         self._next_id = 1
         self._initialized = True
+        self._fulltext = None
 
     # ---- Propriétés pratiques ----
     @property
@@ -158,3 +162,120 @@ class Corpus:
             doc = Document.from_record(rec)
             c.add_document(doc, preserve_id=int(rec["id"]))
         return c
+
+    # =======================
+    #   TD6 - PARTIE 1
+    # =======================
+
+    def _build_fulltext(self):
+        """Construit une grande chaîne concaténant tous les textes (une seule fois)."""
+        if self._fulltext is None:
+            self._fulltext = " ".join(
+                doc.texte for doc in self.id2doc.values() if doc.texte
+            )
+
+    def search(self, pattern: str, flags=re.IGNORECASE, contexte: int = 40):
+        """
+        Retourne les passages contenant le motif `pattern` dans le corpus.
+        On renvoie une liste de petits extraits (contexte gauche + motif + contexte droit).
+        """
+        self._build_fulltext()
+        texte = self._fulltext
+        regex = re.compile(pattern, flags)
+
+        extraits = []
+        for m in regex.finditer(texte):
+            start, end = m.span()
+            left = texte[max(0, start - contexte): start]
+            match = m.group(0)
+            right = texte[end: end + contexte]
+            extraits.append(left + match + right)
+
+        return extraits
+
+    def concorde(self, pattern: str, contexte: int = 40, flags=re.IGNORECASE) -> pd.DataFrame:
+        """
+        Construit un concordancier pour `pattern`.
+        Retourne un DataFrame avec colonnes :
+        - contexte_gauche
+        - motif_trouve
+        - contexte_droit
+        """
+        self._build_fulltext()
+        texte = self._fulltext
+        regex = re.compile(pattern, flags)
+
+        rows = []
+        for m in regex.finditer(texte):
+            start, end = m.span()
+            left = texte[max(0, start - contexte): start]
+            match = m.group(0)
+            right = texte[end: end + contexte]
+            rows.append({
+                "contexte_gauche": left,
+                "motif_trouve": match,
+                "contexte_droit": right
+            })
+
+        df = pd.DataFrame(rows, columns=["contexte_gauche", "motif_trouve", "contexte_droit"])
+        return df
+    
+ # ============================================================
+    # PARTIE 2 : Statistiques textuelles (TD6)
+    # ============================================================
+    def nettoyer_texte(self, s: str) -> str:
+        """Normalise du texte : minuscules, suppression ponctuation/chiffres, espaces propres."""
+        if not isinstance(s, str):
+            return ""
+        s = s.lower()
+        s = re.sub(r"[^\w\s]", " ", s)      # retire la ponctuation
+        s = re.sub(r"\d+", " ", s)          # retire les chiffres
+        s = re.sub(r"\s+", " ", s).strip()  # espaces propres
+        return s
+
+    def stats(self, n: int = 20) -> pd.DataFrame:
+        """
+        Affiche plusieurs statistiques :
+        - nombre de mots différents
+        - les n mots les plus fréquents
+        Retourne un DataFrame `freq` contenant :
+        - word : le mot
+        - tf : nombre total d’occurrences (term frequency)
+        - df : nombre de documents où il apparaît (document frequency)
+        """
+        print("\n=== STATISTIQUES TEXTE ===")
+
+        # 1) Construire la liste nettoyée de tous les textes
+        texts = [self.nettoyer_texte(doc.texte) for doc in self.id2doc.values()]
+
+        # 2) Vocabulaire (set pour enlever doublons)
+        vocab = set()
+        for t in texts:
+            vocab.update(t.split())
+
+        print(f"Nombre total de mots distincts : {len(vocab)}")
+
+        # 3) Compter TF (term frequency)
+        tf_counts = {w: 0 for w in vocab}
+        for t in texts:
+            for w in t.split():
+                tf_counts[w] += 1
+
+        # 4) Compter DF (document frequency)
+        df_counts = {w: 0 for w in vocab}
+        for w in vocab:
+            df_counts[w] = sum(1 for t in texts if w in t.split())
+
+        # 5) Construction DataFrame final
+        df = pd.DataFrame({
+            "word": list(vocab),
+            "tf": [tf_counts[w] for w in vocab],
+            "df": [df_counts[w] for w in vocab],
+        })
+
+        df = df.sort_values(by="tf", ascending=False)
+
+        print(f"\nTop {n} mots les plus fréquents :")
+        print(df.head(n))
+
+        return df
