@@ -7,11 +7,22 @@ from Document import Document, ArxivDocument, RedditDocument
 from Author import Author
 
 class Corpus:
+    _instance = None
+
+    def __new__(cls, nom: str):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self, nom: str):
+        # attention : __init__ est rappelé à chaque fois, donc protège
+        if hasattr(self, "_initialized") and self._initialized:
+            return
         self.nom = nom
-        self.authors: Dict[str, Author] = {}
-        self.id2doc: Dict[int, Document] = {}
-        self._next_id = 1  # id auto-incrément
+        self.authors = {}
+        self.id2doc = {}
+        self._next_id = 1
+        self._initialized = True
 
     # ---- Propriétés pratiques ----
     @property

@@ -1,18 +1,28 @@
 # TD4.py
-import ssl, certifi, urllib.parse, urllib.request, xmltodict, praw
-from datetime import datetime
+import ssl
+import certifi
+import urllib.parse
+import urllib.request
+import xmltodict
+import praw
 
-from Document import Document, RedditDocument, ArxivDocument
 from Corpus import Corpus
+from DocumentFactory import DocumentFactory
 
-#TD3 Modifiée
+# ---------- Utilitaires ----------
 def clean_text(s: str) -> str:
     return " ".join((s or "").split())
 
+
+# ---------- Paramètres ----------
 keywords = ["cybersecurity", "cyber security", "malware", "ransomware", "cyber attack"]
+
+# Corpus (Singleton)
 corpus = Corpus("CyberSec")
 
-#  1) Reddit 
+# ============================================================
+# 1) Reddit
+# ============================================================
 reddit = praw.Reddit(
     client_id="snh42z2qlcdumEuWm0DLFQ",
     client_secret="rywmqYg_XNcu9k8cQlOKjOU-wyyJzw",
@@ -28,41 +38,35 @@ for sub in subreddits_list:
     for post in subreddit.hot(limit=20):
         text_blob = (post.title or "") + " " + (post.selftext or "")
         if any(k.lower() in text_blob.lower() for k in keywords) and post.selftext:
-            texte = clean_text(post.selftext)
-            if not texte:
-                continue
-            titre = post.title or "(Sans titre)"
-            auteur = str(post.author) if post.author else "Inconnu"
-            date = datetime.fromtimestamp(post.created_utc)
-            url = f"https://www.reddit.com{post.permalink}"
-
-            doc = RedditDocument(
-                titre=titre,
-                auteur=auteur,
-                date=date,
-                url=url,
-                texte=texte,
-                nb_comments=post.num_comments,
-                subreddit=sub
-            )
+            # On délègue la création du doc à la factory
+            doc = DocumentFactory.reddit_from_post(post)
             corpus.add_document(doc)
+            count_reddit += 1
 
-print(f"[Reddit] Documents ajoutés : {count_reddit}")
+print(f"\n[Reddit] Documents ajoutés : {count_reddit}")
 
-# 2) ArXiv 
+# ============================================================
+# 2) ArXiv
+# ============================================================
+
 query = " OR ".join(keywords)
 params = {
     "search_query": f"all:{query}",
     "start": 0,
-    "max_results": 50,
+    "max_results": 20,  # plus petit pour tester
     "sortBy": "relevance",
     "sortOrder": "descending",
 }
-base_url = "https://export.arxiv.org/api/query"
+
+base_url = "http://export.arxiv.org/api/query"
 url = base_url + "?" + urllib.parse.urlencode(params)
+print("[DEBUG] URL Arxiv utilisée :")
+print(url)
 
 ctx = ssl.create_default_context(cafile=certifi.where())
-headers = {"User-Agent": "cybersec-scraper/1.0 (mailto:ton.mail@example.com)"}
+headers = {
+    "User-Agent": "cybersec-scraper/1.0 (mailto:andrea.lyonnet@gmail.com)"
+}
 req = urllib.request.Request(url, headers=headers)
 
 xml_data = b""
@@ -72,95 +76,83 @@ try:
 except Exception as e:
     print(f"[ERROR] arXiv request failed: {e}")
 
-entries = []
-if xml_data:
-    data = xmltodict.parse(xml_data)
-    feed = data.get("feed", {}) or {}
-    entries = feed.get("entry", [])
-    if isinstance(entries, dict):
-        entries = [entries]
-    print(f"[arXiv] Nombre d'entrées : {len(entries)}")
+if not xml_data:
+    print("[WARN] Aucune donnée reçue d'Arxiv (xml_data vide).")
+    entries = []
+else:
+    # Pour check : afficher le début de la réponse
+    print("\n[DEBUG] 200 premiers octets de la réponse Arxiv :")
+    print(xml_data[:200])
+
+    try:
+        data = xmltodict.parse(xml_data)
+        feed = data.get("feed", {}) or {}
+        entries = feed.get("entry", [])
+        if isinstance(entries, dict):
+            entries = [entries]
+        print(f"[arXiv] Nombre d'entrées : {len(entries)}")
+    except Exception as e:
+        print(f"[ERROR] arXiv parse failed: {e}")
+        entries = []
 
 count_arxiv = 0
 for e in entries:
-    summary = clean_text(e.get("summary", ""))
-    if not summary:
+    # on passe par la factory qui fait tout le boulot
+    doc = DocumentFactory.arxiv_from_entry(e)
+    if not doc.texte:
         continue
-
-    titre = clean_text(e.get("title", "Sans titre"))
-
-    # auteurs (peuvent être multiples)
-    authors = e.get("author", [])
-    if isinstance(authors, list):
-        authors_names = [a.get("name", "").strip() for a in authors if isinstance(a, dict)]
-        auteur_str = ", ".join(a for a in authors_names if a)
-    elif isinstance(authors, dict):
-        auteur_str = authors.get("name", "Inconnu")
-    else:
-        auteur_str = "Inconnu"
-
-    # date
-    published = e.get("published", "")
-    try:
-        date = datetime.fromisoformat(published.replace("Z", "+00:00"))
-    except Exception:
-        date = published  # fallback str
-
-    # url
-    url = ""
-    links = e.get("link", [])
-    if isinstance(links, list):
-        for l in links:
-            if l.get("@rel") == "alternate":
-                url = l.get("@href", "")
-                break
-    elif isinstance(links, dict):
-        url = links.get("@href", "")
-    if not url:
-        url = e.get("id", "")
-
-# auteur principal = premier de la liste, le reste = co-auteurs
-if authors_names:
-    main_author = authors_names[0]
-    coauthors = authors_names[1:]
-else:
-    main_author = auteur_str or "Inconnu"
-    coauthors = []
-
-doc = ArxivDocument(
-    titre=titre,
-    auteur=main_author,
-    date=date,
-    url=url,
-    texte=summary,
-    coauthors=coauthors
-)
-corpus.add_document(doc)
-
+    corpus.add_document(doc)
+    count_arxiv += 1
 
 print(f"[arXiv] Documents ajoutés : {count_arxiv}")
-print(corpus)  
 
-# Affichages par date et par titre 
+print("\n=== Corpus courant ===")
+print(corpus)
+
+# ============================================================
+# Affichages par date et par titre
+# ============================================================
+print("\n--- Top 7 par date ---")
 corpus.show_by_date(7)
+
+print("\n--- Top 7 par titre ---")
 corpus.show_by_title(7)
 
-#  Sauvegarde / Chargement 
-corpus.save("corpus.tsv")     
-corpus2 = Corpus.load("CyberSec(reload)", "corpus.tsv")
-print(corpus2)
-corpus2.show_by_title(3)
+# Optionnel : afficher avec la source (si tu as implémenté show_with_source)
+# print("\n--- Docs + source ---")
+# corpus.show_with_source(10)
 
-# Statistiques Auteur 
+# ============================================================
+# Sauvegarde / Chargement
+# ============================================================
+corpus.save("corpus.tsv")
+corpus_reloaded = Corpus.load("CyberSec(reload)", "corpus.tsv")
+
+print("\n=== Corpus rechargé depuis corpus.tsv ===")
+print(corpus_reloaded)
+corpus_reloaded.show_by_title(3)
+
+# ============================================================
+# Statistiques Auteur
+# ============================================================
 name = input("\nAuteur pour statistiques : ").strip()
 if name in corpus.authors:
     aut = corpus.authors[name]
     nb_docs = aut.ndoc
     total_len = sum(len(d.texte) for d in aut.production.values())
     avg_len = total_len / nb_docs if nb_docs else 0
-    print(f"\nAuteur : {name}\nDocs : {nb_docs}\nTaille moyenne : {avg_len:.1f} caractères")
+    print(f"\nAuteur : {name}")
+    print(f"Docs : {nb_docs}")
+    print(f"Taille moyenne : {avg_len:.1f} caractères")
     print("Titres :")
     for doc_id, d in aut.production.items():
         print(f" - ({doc_id}) {d.titre[:80]}")
 else:
     print("Auteur inconnu dans le corpus.")
+
+# ============================================================
+# Test du Singleton
+# ============================================================
+corpus1 = Corpus("CyberSec")
+corpus2 = Corpus("AutreNom")
+print("\nSingleton Corpus ? :", corpus1 is corpus2)
