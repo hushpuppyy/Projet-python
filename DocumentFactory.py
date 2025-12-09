@@ -20,7 +20,7 @@ class DocumentFactory:
         titre = (e.get("title") or "").strip()
         titre = " ".join(titre.split())
 
-        authors = e.get("author", [])
+        authors = e.get(" author", [])
         if isinstance(authors, list):
             authors_names = [a.get("name", "").strip() for a in authors if isinstance(a, dict)]
             auteur_principal = authors_names[0] if authors_names else "Inconnu"
