@@ -1,13 +1,15 @@
 # SearchEngine.py
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix
 
 from Corpus import Corpus
 from Document import Document
-from tqdm.notebook import tqdm
+# tqdm.auto picks the best available backend (notebook/widget/terminal) without
+# requiring the Jupyter ipywidgets extension.
+from tqdm.auto import tqdm
 
 
 class SearchEngine:
@@ -35,17 +37,17 @@ class SearchEngine:
         self.doc_ids: List[int] = []
 
         # Matrices
-        self.mat_tf: csr_matrix | None = None
-        self.mat_tfidf: csr_matrix | None = None
+        self.mat_tf: Optional[csr_matrix] = None
+        self.mat_tfidf: Optional[csr_matrix] = None
 
         # IDF + normes des docs (pour le cosinus TF-IDF)
-        self.idf: np.ndarray | None = None
-        self.doc_norms: np.ndarray | None = None
+        self.idf: Optional[np.ndarray] = None
+        self.doc_norms: Optional[np.ndarray] = None
 
         # Infos supplémentaires pour BM25
-        self.df: np.ndarray | None = None          # document frequency
-        self.doc_lengths: np.ndarray | None = None # longueur de chaque doc
-        self.avg_doc_length: float | None = None   # longueur moyenne
+        self.df: Optional[np.ndarray] = None          # document frequency
+        self.doc_lengths: Optional[np.ndarray] = None # longueur de chaque doc
+        self.avg_doc_length: Optional[float] = None   # longueur moyenne
         self.N: int = 0                            # nombre total de docs
 
         # Construction de l'index au moment de l'instanciation
@@ -196,7 +198,7 @@ class SearchEngine:
     # ---------------------------------------------------------
     # Recherche
     # ---------------------------------------------------------
-    def search(self, query: str, n: int = 10, method: str | None = None) -> pd.DataFrame:
+    def search(self, query: str, n: int = 10, method: Optional[str] = None) -> pd.DataFrame:
         """
         Recherche les documents les plus pertinents pour la requête.
         - query : chaîne de mots-clés
