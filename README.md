@@ -32,11 +32,13 @@ Implémentation du moteur TF-IDF et BM25
 Recherche textuelle fonctionnelle en console
 
 TD8 – Interface graphique minimaliste (CLI / notebook)
+Ouvrir plutot avec jupyter notebook pour une meilleur visibilté 
 Construction d’une interface simple pour interroger l’index
 Visualisation des résultats dans un DataFrame
 Classement des scores de pertinence
 
 TD9–10 – Interface Web avec Flask
+Ouvrir plutot avec jupyter notebook pour une meilleur visibilté 
 Ce TD consiste à transformer le moteur de recherche en une application web complète :
 Création d’un serveur web Flask (app.py)
 Intégration du moteur TF-IDF / BM25
