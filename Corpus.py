@@ -1,4 +1,3 @@
-# Corpus.py
 from typing import Dict, Tuple, List
 from datetime import datetime, timezone
 import pandas as pd
@@ -18,7 +17,6 @@ class Corpus:
         return cls._instance
 
     def __init__(self, nom: str):
-        # attention : __init__ est rappelé à chaque fois, donc protège
         if hasattr(self, "_initialized") and self._initialized:
             return
         self.nom = nom
@@ -28,7 +26,6 @@ class Corpus:
         self._initialized = True
         self._fulltext = None
 
-    # ---- Propriétés pratiques ----
     @property
     def ndoc(self) -> int:
         return len(self.id2doc)
@@ -37,11 +34,9 @@ class Corpus:
     def naut(self) -> int:
         return len(self.authors)
 
-    # ---- Ajout / Indexation ----
     def _register_author(self, author_field: str, doc_id: int, doc_obj: Document):
         if not author_field:
             return
-        # Gère les auteurs multiples "A, B, C"
         names = [a.strip() for a in str(author_field).split(",") if a.strip()]
         for name in names:
             if name not in self.authors:
@@ -52,7 +47,6 @@ class Corpus:
         """Ajoute un Document et met à jour les auteurs. Retourne l'id utilisé."""
         if preserve_id is not None:
             doc_id = int(preserve_id)
-            # Maintient l'auto-incrément correct
             self._next_id = max(self._next_id, doc_id + 1)
         else:
             doc_id = self._next_id
@@ -62,12 +56,9 @@ class Corpus:
         self._register_author(doc.auteur, doc_id, doc)
         return doc_id
 
-    # ---- Affichages triés ----
-
     def _date_key(self, doc):
         d = doc.date
 
-        # Si c'est une chaîne, on essaye de parser
         if isinstance(d, str):
             try:
                 d = datetime.fromisoformat(d.replace("Z", "+00:00"))
@@ -75,12 +66,9 @@ class Corpus:
                 return datetime.min
 
         if isinstance(d, datetime):
-            # On convertit TOUT en datetime "naïf" en UTC
             if d.tzinfo is not None:
                 d = d.astimezone(timezone.utc).replace(tzinfo=None)
             return d
-
-        # Si on n'arrive vraiment pas, on renvoie une date très basse
         return datetime.min
 
 
@@ -103,7 +91,6 @@ class Corpus:
     def __repr__(self):
         return f"Corpus('{self.nom}', ndoc={self.ndoc}, naut={self.naut})"
 
-    # ---- Sauvegarde / Chargement via DataFrame (TSV) ----
     def to_dataframe(self) -> pd.DataFrame:
         rows = [doc.to_record(doc_id) for doc_id, doc in self.id2doc.items()]
         df = pd.DataFrame(rows, columns=["id", "titre", "auteur", "date", "url", "texte", "type", "coauthors"])
@@ -148,8 +135,6 @@ class Corpus:
 
             c.add_document(doc, preserve_id=int(rec["id"]))
         return c
-
-    # ---- (Optionnel) autres formats ----
     def save_json(self, path: str, encoding: str = "utf-8"):
         self.to_dataframe().to_json(path, force_ascii=False, orient="records", indent=2)
 
@@ -163,9 +148,7 @@ class Corpus:
             c.add_document(doc, preserve_id=int(rec["id"]))
         return c
 
-    # =======================
     #   TD6 - PARTIE 1
-    # =======================
 
     def _build_fulltext(self):
         """Construit une grande chaîne concaténant tous les textes (une seule fois)."""
@@ -175,10 +158,6 @@ class Corpus:
             )
 
     def search(self, pattern: str, flags=re.IGNORECASE, contexte: int = 40):
-        """
-        Retourne les passages contenant le motif `pattern` dans le corpus.
-        On renvoie une liste de petits extraits (contexte gauche + motif + contexte droit).
-        """
         self._build_fulltext()
         texte = self._fulltext
         regex = re.compile(pattern, flags)
@@ -194,13 +173,6 @@ class Corpus:
         return extraits
 
     def concorde(self, pattern: str, contexte: int = 40, flags=re.IGNORECASE) -> pd.DataFrame:
-        """
-        Construit un concordancier pour `pattern`.
-        Retourne un DataFrame avec colonnes :
-        - contexte_gauche
-        - motif_trouve
-        - contexte_droit
-        """
         self._build_fulltext()
         texte = self._fulltext
         regex = re.compile(pattern, flags)
@@ -220,9 +192,8 @@ class Corpus:
         df = pd.DataFrame(rows, columns=["contexte_gauche", "motif_trouve", "contexte_droit"])
         return df
     
- # ============================================================
     # PARTIE 2 : Statistiques textuelles (TD6)
-    # ============================================================
+
     def nettoyer_texte(self, s: str) -> str:
         """Normalise du texte : minuscules, suppression ponctuation/chiffres, espaces propres."""
         if not isinstance(s, str):
@@ -234,34 +205,25 @@ class Corpus:
         return s
 
     def stats(self, n: int = 20) -> pd.DataFrame:
-        """
-        Affiche plusieurs statistiques :
-        - nombre de mots différents
-        - les n mots les plus fréquents
-        Retourne un DataFrame `freq` contenant :
-        - word : le mot
-        - tf : nombre total d’occurrences (term frequency)
-        - df : nombre de documents où il apparaît (document frequency)
-        """
         print("\n=== STATISTIQUES TEXTE ===")
 
         # 1) Construire la liste nettoyée de tous les textes
         texts = [self.nettoyer_texte(doc.texte) for doc in self.id2doc.values()]
 
-        # 2) Vocabulaire (set pour enlever doublons)
+        # 2) Vocabulaire 
         vocab = set()
         for t in texts:
             vocab.update(t.split())
 
         print(f"Nombre total de mots distincts : {len(vocab)}")
 
-        # 3) Compter TF (term frequency)
+        # 3) Compter TF 
         tf_counts = {w: 0 for w in vocab}
         for t in texts:
             for w in t.split():
                 tf_counts[w] += 1
 
-        # 4) Compter DF (document frequency)
+        # 4) Compter DF 
         df_counts = {w: 0 for w in vocab}
         for w in vocab:
             df_counts[w] = sum(1 for t in texts if w in t.split())

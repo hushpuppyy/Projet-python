@@ -1,4 +1,3 @@
-# Document.py
 from datetime import datetime
 
 
@@ -6,19 +5,17 @@ class Document:
     def __init__(self, titre, auteur, date, url, texte, doc_type="generic"):
         self.titre = titre
         self.auteur = auteur
-        self.date = date            # datetime ou str
+        self.date = date            
         self.url = url
         self.texte = texte
-        self.type = doc_type        # <- important pour getType()
+        self.type = doc_type        
 
-    # ---------- Métier commun ----------
     def getType(self) -> str:
         return self.type
 
     def __str__(self) -> str:
         return f"[{self.getType().upper()}] {self.titre}"
 
-    # ---------- Sérialisation (Corpus.save / load) ----------
     def to_record(self, doc_id: int) -> dict:
         if isinstance(self.date, datetime):
             iso_date = self.date.isoformat()
@@ -59,11 +56,7 @@ class Document:
             doc_type=rec.get("type", "generic"),
         )
 
-
-# ======================================================================
-# Classe fille : RedditDocument
-# ======================================================================
-
+# RedditDocument
 class RedditDocument(Document):
     def __init__(self, titre, auteur, date, url, texte, nb_comments: int = 0):
         super().__init__(titre, auteur, date, url, texte, doc_type="reddit")
@@ -82,10 +75,7 @@ class RedditDocument(Document):
         )
 
 
-# ======================================================================
 # Classe fille : ArxivDocument
-# ======================================================================
-
 class ArxivDocument(Document):
     def __init__(self, titre, auteur, date, url, texte, coauthors=None):
         super().__init__(titre, auteur, date, url, texte, doc_type="arxiv")

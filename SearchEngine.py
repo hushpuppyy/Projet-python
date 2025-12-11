@@ -1,5 +1,3 @@
-# SearchEngine.py
-
 from typing import Dict, List
 import numpy as np
 import pandas as pd
@@ -10,14 +8,6 @@ from Document import Document
 
 
 class SearchEngine:
-    """
-    Moteur de recherche basé sur un objet Corpus.
-    - construit le vocabulaire
-    - construit la matrice Documents x Termes (TF)
-    - construit la matrice TFxIDF
-    - propose une méthode search(mots_cles, n) qui renvoie un DataFrame
-    """
-
     def __init__(self, corpus: Corpus, use_tfidf: bool = True):
         self.corpus = corpus
         self.use_tfidf = use_tfidf
@@ -25,24 +15,18 @@ class SearchEngine:
         # Vocabulaire : mot -> index de colonne
         self.vocab: Dict[str, int] = {}
         self.id2word: List[str] = []
-
-        # Liste des ids de documents dans l'ordre des lignes de la matrice
         self.doc_ids: List[int] = []
 
         # Matrices
         self.mat_tf: csr_matrix | None = None
         self.mat_tfidf: csr_matrix | None = None
 
-        # IDF + normes des docs (pour le cosinus)
+        # IDF + normes des docs 
         self.idf: np.ndarray | None = None
         self.doc_norms: np.ndarray | None = None
 
-        # Construction de l'index au moment de l'instanciation
         self._build_index()
 
-    # ---------------------------------------------------------
-    # Construction de la matrice Documents x Termes
-    # ---------------------------------------------------------
     def _build_index(self):
         print("\n=== Construction de l'index (TD7) ===")
 
@@ -68,13 +52,12 @@ class SearchEngine:
         print(f"- Nombre de documents : {n_docs}")
         print(f"- Taille du vocabulaire : {n_terms}")
 
-        # 2) Construction de la matrice TF (sparse CSR)
+        # 2) Construction de la matrice TF 
         rows = []
         cols = []
         data = []
 
         for i, tokens in enumerate(texts_tokens):
-            # comptage des mots dans le document i
             local_counts: Dict[str, int] = {}
             for tok in tokens:
                 if tok in self.vocab:
@@ -93,12 +76,10 @@ class SearchEngine:
         )
 
         # 3) Calcul des IDF et de la matrice TFxIDF
-        # df = nombre de documents contenant le mot
         df = np.asarray((self.mat_tf > 0).sum(axis=0)).ravel()
-        df[df == 0] = 1  # sécurité
-
+        df[df == 0] = 1  
         N = n_docs
-        self.idf = np.log(N / df)  # IDF classique
+        self.idf = np.log(N / df)  
 
         self.mat_tfidf = self.mat_tf.multiply(self.idf)
 
@@ -107,9 +88,6 @@ class SearchEngine:
 
         print("=== Index construit ===")
 
-    # ---------------------------------------------------------
-    # Vectorisation d'une requête
-    # ---------------------------------------------------------
     def _vectorize_query(self, query: str) -> np.ndarray:
         """
         Transforme les mots-clés de la requête en un vecteur (TF-IDF)
@@ -123,7 +101,6 @@ class SearchEngine:
 
         q_vec = np.zeros(len(self.vocab), dtype=float)
 
-        # TF pour la requête
         for tok in tokens:
             if tok in self.vocab:
                 j = self.vocab[tok]
@@ -135,18 +112,7 @@ class SearchEngine:
 
         return q_vec
 
-    # ---------------------------------------------------------
-    # Recherche
-    # ---------------------------------------------------------
     def search(self, query: str, n: int = 10) -> pd.DataFrame:
-        """
-        Recherche les documents les plus pertinents pour la requête.
-        - query : chaîne de mots-clés
-        - n : nombre de documents à retourner
-        Retourne un DataFrame pandas avec colonnes :
-        [doc_id, score, titre, auteur, date, type, url]
-        """
-
         if self.mat_tfidf is None or self.doc_norms is None:
             raise RuntimeError("L'index n'a pas été construit correctement.")
 
@@ -155,16 +121,12 @@ class SearchEngine:
             print("Aucun des mots de la requête n'est dans le vocabulaire.")
             return pd.DataFrame(columns=["doc_id", "score", "titre", "auteur", "date", "type", "url"])
 
-        # Similarité cosinus : (d · q) / (||d|| * ||q||)
         q_norm = np.linalg.norm(q_vec) + 1e-12
-
-        # Produit matrice (docs x termes) · vecteur (termes)
-        scores = self.mat_tfidf.dot(q_vec)  # shape (n_docs,)
+        scores = self.mat_tfidf.dot(q_vec) 
         scores = np.asarray(scores).ravel()
 
         sims = scores / (self.doc_norms * q_norm)
 
-        # Tri décroissant des scores
         order = np.argsort(-sims)
         top_idx = order[:n]
 
@@ -172,7 +134,7 @@ class SearchEngine:
         for idx in top_idx:
             score = sims[idx]
             if score <= 0:
-                continue  # on ignore les scores nuls/négatifs
+                continue  
 
             doc_id = self.doc_ids[idx]
             doc: Document = self.corpus.id2doc[doc_id]

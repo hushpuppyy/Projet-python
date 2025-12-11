@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Moteur de recherche documentaire – TD3</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="app">
+    <header class="topbar">
+        <div class="topbar-main">
+            <h1>Moteur de recherche documentaire</h1>
+            <p class="subtitle">
+                Recherche BM25 / TF-IDF sur le corpus TD3 (Reddit &amp; Arxiv)
+            </p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="search-panel">
+            <form class="search-form" method="GET" action="/">
+                <div class="search-input-wrapper">
+                    <span class="search-icon">&#128269;</span>
+                    <input
+                        type="text"
+                        name="q"
+                        placeholder="Entrez des mots-clés (ex: cybersecurity, cyber, malware, ransomware, attack)"
+                        value="{{ query }}"
+                    >
+                </div>
+
+                <div class="search-options">
+                    <div class="field">
+                        <label for="mode">Mode</label>
+                        <select id="mode" name="mode">
+                            <option value="BM25"  {% if mode == 'BM25' %}selected{% endif %}>BM25</option>
+                            <option value="TF-IDF" {% if mode.startswith('TF') %}selected{% endif %}>TF-IDF</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="source">Source</label>
+                        <select id="source" name="source">
+                            <option value="Toutes" {% if source == 'Toutes' %}selected{% endif %}>Toutes</option>
+                            <option value="Arxiv"  {% if source == 'Arxiv' %}selected{% endif %}>Arxiv</option>
+                            <option value="Reddit" {% if source == 'Reddit' %}selected{% endif %}>Reddit</option>
+                        </select>
+                    </div>
+
+                    <div class="field field-range">
+                        <label for="nb_results">Nombre de résultats</label>
+                        <input
+                            type="range"
+                            id="nb_results"
+                            name="nb_results"
+                            min="5"
+                            max="50"
+                            value="{{ nb_results }}"
+                        >
+                        <span class="range-value">{{ nb_results }}</span>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Rechercher</button>
+                </div>
+            </form>
+        </section>
+
+        <div class="layout">
+            <section class="results-column">
+                <div class="results-header">
+                    <p>
+                        Résultats de la recherche
+                        <span class="muted">
+                            ({{ results|length }} trouvés{% if query %} pour « {{ query }} »{% endif %})
+                        </span>
+                    </p>
+                    <div class="results-sort">
+                        <span class="muted">Tri :</span>
+                        <button type="button" class="sort-active">
+                            Pertinence ({{ mode }})
+                        </button>
+                    </div>
+                </div>
+
+                {% if results %}
+                    {% for doc in results %}
+                    <article class="result-card">
+                        <div class="result-main">
+                            <div class="badge">
+                                {{ doc.type_label or doc.type }}
+                            </div>
+
+                            {% if doc.url %}
+                            <a href="{{ doc.url }}"
+                               class="result-title"
+                               target="_blank"
+                               rel="noopener noreferrer">
+                                {{ doc.titre }}
+                            </a>
+                            {% else %}
+                            <span class="result-title">{{ doc.titre }}</span>
+                            {% endif %}
+
+                            <p class="result-meta">
+                                Auteur :
+                                <span>{{ doc.auteur }}</span>
+                                {% if doc.doc_id is not none %}
+                                    &nbsp;•&nbsp; ID : {{ doc.doc_id }}
+                                {% endif %}
+                            </p>
+
+                            <p class="result-snippet">
+                                Résultat issu du corpus TD3 ({{ doc.type_label or doc.type }}).
+                            </p>
+
+                            {% if doc.url %}
+                            <a href="{{ doc.url }}"
+                               class="result-more"
+                               target="_blank"
+                               rel="noopener noreferrer">
+                                Voir le document
+                            </a>
+                            {% endif %}
+                        </div>
+
+                        <div class="result-score">
+                            <span class="muted">Score</span>
+                            <span class="score-value">
+                                {{ "%.4f"|format(doc.score) }}
+                            </span>
+                        </div>
+                    </article>
+                    {% endfor %}
+                {% else %}
+                    <p class="muted" style="padding:8px 4px;">
+                        Aucun résultat pour l’instant.
+                        {% if query %}
+                            Aucun document du corpus TD3 ne contient les termes de la requête.
+                        {% else %}
+                            Saisissez une requête pour lancer une recherche dans le corpus TD3 (Reddit &amp; Arxiv).
+                        {% endif %}
+                    </p>
+                {% endif %}
+
+                <nav class="pagination">
+                    <button class="btn-page" disabled>Prev</button>
+                    <button class="btn-page btn-page-active">1</button>
+                    <button class="btn-page" disabled>Next</button>
+                </nav>
+            </section>
+            <aside class="sidebar">
+                <section class="card stats-card">
+                    <h2>Statistiques du corpus TD3</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Documents indexés</span>
+                            <span class="stat-value">{{ nb_docs }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Auteurs uniques</span>
+                            <span class="stat-value">{{ auteurs_uniques }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Taille du vocabulaire</span>
+                            <span class="stat-value">{{ vocab_size }}</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card chart-card">
+                    <div class="chart-header">
+                        <h2>Évolution (placeholder)</h2>
+                        <p class="muted">
+                            Zone prévue pour un futur graphique (non connecté pour l’instant).
+                        </p>
+                    </div>
+                    <div class="chart-placeholder">
+                        <div class="chart-line"></div>
+                        <div class="chart-axis chart-axis-y"></div>
+                        <div class="chart-axis chart-axis-x"></div>
+                    </div>
+                </section>
+
+                <section class="card tags-card">
+                    <h2>Exemples de mots-clés</h2>
+                    <div class="tags-list">
+                        <span class="tag">Cyber</span>
+                        <span class="tag">Security</span>
+                        <span class="tag">Attack</span>
+                        <span class="tag">Artificial</span>
+                        <span class="tag">Analysis</span>
+                        <span class="tag">Malware</span>
+                    </div>
+                </section>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-inner">
+            <span>Projet Python – Moteur de recherche TD3</span>
+            <div class="footer-links">
+                <span>Corpus : Reddit + Arxiv uniquement</span>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<script>
+    const range = document.getElementById('nb_results');
+    const out = document.querySelector('.range-value');
+    if (range && out) {
+        out.textContent = range.value;
+        range.addEventListener('input', () => out.textContent = range.value);
+    }
+</script>
+</body>
+</html>

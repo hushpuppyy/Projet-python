@@ -1,4 +1,3 @@
-# TD4.py
 import ssl
 import certifi
 import urllib.parse
@@ -9,20 +8,14 @@ import praw
 from Corpus import Corpus
 from DocumentFactory import DocumentFactory
 
-# ---------- Utilitaires ----------
 def clean_text(s: str) -> str:
     return " ".join((s or "").split())
 
-
-# ---------- Paramètres ----------
 keywords = ["cybersecurity", "cyber security", "malware", "ransomware", "cyber attack"]
 
-# Corpus (Singleton)
 corpus = Corpus("CyberSec")
 
-# ============================================================
 # 1) Reddit
-# ============================================================
 reddit = praw.Reddit(
     client_id="snh42z2qlcdumEuWm0DLFQ",
     client_secret="rywmqYg_XNcu9k8cQlOKjOU-wyyJzw",
@@ -45,15 +38,12 @@ for sub in subreddits_list:
 
 print(f"\n[Reddit] Documents ajoutés : {count_reddit}")
 
-# ============================================================
 # 2) ArXiv
-# ============================================================
-
 query = " OR ".join(keywords)
 params = {
     "search_query": f"all:{query}",
     "start": 0,
-    "max_results": 20,  # plus petit pour tester
+    "max_results": 20,  
     "sortBy": "relevance",
     "sortOrder": "descending",
 }
@@ -80,7 +70,6 @@ if not xml_data:
     print("[WARN] Aucune donnée reçue d'Arxiv (xml_data vide).")
     entries = []
 else:
-    # Pour check : afficher le début de la réponse
     print("\n[DEBUG] 200 premiers octets de la réponse Arxiv :")
     print(xml_data[:200])
 
@@ -97,7 +86,6 @@ else:
 
 count_arxiv = 0
 for e in entries:
-    # on passe par la factory qui fait tout le boulot
     doc = DocumentFactory.arxiv_from_entry(e)
     if not doc.texte:
         continue
@@ -109,22 +97,12 @@ print(f"[arXiv] Documents ajoutés : {count_arxiv}")
 print("\n=== Corpus courant ===")
 print(corpus)
 
-# ============================================================
-# Affichages par date et par titre
-# ============================================================
 print("\n--- Top 7 par date ---")
 corpus.show_by_date(7)
 
 print("\n--- Top 7 par titre ---")
 corpus.show_by_title(7)
 
-# Optionnel : afficher avec la source (si tu as implémenté show_with_source)
-# print("\n--- Docs + source ---")
-# corpus.show_with_source(10)
-
-# ============================================================
-# Sauvegarde / Chargement
-# ============================================================
 corpus.save("corpus.tsv")
 corpus_reloaded = Corpus.load("CyberSec(reload)", "corpus.tsv")
 
@@ -132,9 +110,6 @@ print("\n=== Corpus rechargé depuis corpus.tsv ===")
 print(corpus_reloaded)
 corpus_reloaded.show_by_title(3)
 
-# ============================================================
-# Statistiques Auteur
-# ============================================================
 name = input("\nAuteur pour statistiques : ").strip()
 if name in corpus.authors:
     aut = corpus.authors[name]
@@ -150,9 +125,7 @@ if name in corpus.authors:
 else:
     print("Auteur inconnu dans le corpus.")
 
-# ============================================================
-# Test du Singleton
-# ============================================================
+# Test 
 corpus1 = Corpus("CyberSec")
 corpus2 = Corpus("AutreNom")
 print("\nSingleton Corpus ? :", corpus1 is corpus2)
