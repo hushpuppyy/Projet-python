@@ -1,9 +1,6 @@
-# Author.py
 from typing import Dict
 from Document import Document 
 
-
-# production : {doc_id: Document}
 class Author:
     def __init__(self, name: str):
         self.name: str = name

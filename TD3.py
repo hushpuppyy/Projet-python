@@ -9,7 +9,7 @@ import pandas as pd
 
 #PARTIE 1 
 
-docs = []  # contiendra UNIQUEMENT des dicts {"text": ..., "origin": ...}
+docs = []  
 keywords = ["cybersecurity", "cyber security", "malware", "ransomware", "cyber attack"]
 
 def clean_text(s: str) -> str:
@@ -93,7 +93,6 @@ for e in entries:
 
 print(f"\n[arXiv] Docs textuels ajoutés : {count_arxiv}")
 
-# Dé-duplication par (text, origin)
 seen = set()
 uniq = []
 for d in docs:
@@ -107,7 +106,7 @@ print(f"\nTotal de documents dans docs : {len(docs)}")
 for i, d in enumerate(docs[:5], start=1):
     print(f"\n--- Doc {i} ({d['origin']}) ---\n{d['text'][:500]}...")
 
-# Vue textuelle brute (
+# Vue textuelle brute 
 with open("docs.txt", "w", encoding="utf-8") as f:
     for i, d in enumerate(docs, start=1):
         f.write(f"--- Doc {i} ({d['origin']}) ---\n{d['text']}\n\n")
@@ -118,7 +117,7 @@ print("Écrit dans docs.txt")
 df = pd.DataFrame(docs, columns=["text", "origin"])
 df.insert(0, "id", range(1, len(df) + 1))
 
-out_path = "corpus.csv"  # TSV demandé
+out_path = "corpus.csv" 
 df.to_csv(out_path, sep="\t", index=False, encoding="utf-8")
 print(f"✅ Sauvegardé dans {out_path}")
 
