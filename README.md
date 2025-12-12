@@ -1,10 +1,10 @@
-Projet Python – TD3 à TD10
+## Projet Python – TD3 à TD10
 Moteur de recherche documentaire (Reddit + Arxiv)
 
 Ce dépôt contient l’ensemble de notre travail réalisé entre les TD3 et TD10 du module Python.
 L’objectif du projet était de construire progressivement un moteur de recherche documentaire, depuis l’acquisition de données jusqu’à la construction d’une interface web fonctionnelle.
 
-Contenu du dépôt
+## Contenu du dépôt
 TD3 – Acquisition de données
 Récupération d’articles via Reddit (API Pushshift)
 Téléchargement de publications scientifiques via Arxiv
@@ -60,7 +60,7 @@ Design complet avec un fichier CSS (style.css)
 Aller plus loin : moteur de recherche spécialisé cybersécurité
 Pour aller plus loin que les TD demandés, nous avons décidé de créer un moteur de recherche thématique sur la cybersécurité, basé sur les documents collectés dans les TD précédents (Arxiv + Reddit).
 
-L’objectif :
+## L’objectif :
 Créer une interface moderne qui permet :
   de taper un mot-clé (ex : malware, cybersecurity, ai security)
   de rechercher dans tous les documents scientifiques ou discussions Reddit
@@ -70,9 +70,11 @@ Créer une interface moderne qui permet :
   d’obtenir un score de pertinence basé sur l’index du TD7
 Ce moteur de recherche reprend tout le pipeline des TD et l’étend vers une utilisation réelle.
 
-Comment tester le moteur de recherche ?
+## Comment tester le moteur de recherche ?
 Lancer le serveur : python app.py
 Ouvrir dans le navigateur :http://127.0.0.1:5000/
+
+ou alors TD9-10.ipynb lancé sur jupyter notebook 
 
 Entrer un mot-clé dans la barre de recherche
 Explorer les résultats classés par pertinence
